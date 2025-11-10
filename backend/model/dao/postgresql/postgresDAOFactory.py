@@ -1,7 +1,7 @@
-from model.dao.postgresql.collection.postgresArtistasMensualesDAO import PostgresArtistasMensualesDAO
-from model.dao.postgresql.collection.postgresComunidadesMensualesDAO import PostgresComunidadesMensualesDAO
-from model.dao.postgresql.collection.postgresContenidosMensualesDAO import PostgresContenidosMensualesDAO
-from model.dao.postgresql.posgresConnector import PostgreSQLConnector
+from backend.model.dao.postgresql.collection.postgresArtistasMensualesDAO import PostgresArtistasMensualesDAO
+from backend.model.dao.postgresql.collection.postgresComunidadesMensualesDAO import PostgresComunidadesMensualesDAO
+from backend.model.dao.postgresql.collection.postgresContenidosMensualesDAO import PostgresContenidosMensualesDAO
+from backend.model.dao.postgresql.posgresConnector import PostgreSQLConnector
 
 class PostgreSQLDAOFactory:
     def __init__(self):

@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, BigInteger, CheckConstraint
-from model.factory.model import Base
+from backend.model.base import Base
 
 class ArtistaMensual(Base):
     __tablename__ = "artistasMensual"

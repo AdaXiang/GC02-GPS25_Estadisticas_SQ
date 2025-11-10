@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query
-from model.factory.model import Model
+from backend.model.model import Model
 
 router = APIRouter(prefix="/v1/estadisticas", tags=["Estadísticas"])
 model = Model()

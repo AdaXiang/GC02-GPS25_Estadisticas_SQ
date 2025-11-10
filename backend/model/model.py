@@ -1,6 +1,6 @@
 import requests
-from model.dao.postgresql.postgresDAOFactory import PostgreSQLDAOFactory
-from controller.config import MS_COMUNIDAD_BASE_URL, MS_CONTENIDO_BASE_URL
+from backend.model.dao.postgresql.postgresDAOFactory import PostgreSQLDAOFactory
+from backend.controller.config import MS_COMUNIDAD_BASE_URL, MS_CONTENIDO_BASE_URL
 
 class Model:
     def __init__(self):

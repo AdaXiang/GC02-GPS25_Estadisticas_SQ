@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from model.dto.contenidoMensualDTO import ContenidoMensual
+from backend.model.dto.contenidoMensualDTO import ContenidoMensual
 
 class PostgresContenidosMensualesDAO:
     def __init__(self, db: Session):

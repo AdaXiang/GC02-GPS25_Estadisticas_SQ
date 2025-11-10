@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from model.dto.artistaMensualDTO import ArtistaMensual
-from model.dao.interfaceArtistasMensualesDao import InterfaceArtistasMensualesDao
+from backend.model.dto.artistaMensualDTO import ArtistaMensual
+from backend.model.dao.interfaceArtistasMensualesDao import InterfaceArtistasMensualesDao
 
 class PostgresArtistasMensualesDAO(InterfaceArtistasMensualesDao):
     """
