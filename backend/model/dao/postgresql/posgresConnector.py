@@ -1,12 +1,16 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-import os
+from sqlalchemy.orm import sessionmaker, declarative_base
 
-class PostgreSQLConnector:
-    def __init__(self):
-        self.DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:1234@localhost:5432/estadisticas")
-        self.engine = create_engine(self.DATABASE_URL)
-        self.Session = sessionmaker(bind=self.engine)
+engine = create_engine(
+    "postgresql+psycopg://postgres:12345@127.0.0.1:5432/estadisticas",
+    echo=True,
+    future=True
+)
 
-    def get_session(self):
-        return self.Session()
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine
+)
+
+Base = declarative_base()

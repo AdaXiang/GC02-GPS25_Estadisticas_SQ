@@ -1,6 +1,8 @@
+from fastapi import HTTPException
 import requests
 from backend.model.dao.postgresql.postgresDAOFactory import PostgreSQLDAOFactory
-from backend.controller.config import MS_COMUNIDAD_BASE_URL, MS_CONTENIDO_BASE_URL
+from backend.controller.config import MS_COMUNIDAD_BASE_URL, MS_CONTENIDO_BASE_URL, MS_USUARIOS_BASE_URL
+
 
 class Model:
     def __init__(self):
@@ -8,102 +10,97 @@ class Model:
         self.factory = PostgreSQLDAOFactory()
         # Instancias de los DAOs que se usan en este microservicio
         self.artistasMensualesDAO = self.factory.get_artistas_mensuales_dao()
-        self.comunidadesMensualesDAO = self.factory.get_comunidades_mensuales_dao()
-        self.contenidosMensualesDAO = self.factory.get_contenidos_mensuales_dao()
 
-    # ==========================================================
-    # GET públicos (consultan la BD local actualizada)
-    # ==========================================================
-
-    def get_comunidad_activa(self, id_comunidad: int):
-        """Obtiene los datos actuales de una comunidad activa."""
-        fila = self.comunidadesMensualesDAO.obtener_por_id(id_comunidad)
+    def get_artista_oyentes(self, id_artista: int):
+        fila = self.artistasMensualesDAO.obtener_por_id(id_artista)
         if not fila:
             return None
         return {
-            "idComunidad": fila.idComunidad,
-            "nombre": None,  # Podrías traerlo del MS de Comunidad si quieres
-            "numPublicaciones": int(fila.numPublicaciones),
-            "numMiembros": int(fila.numMiembros)
+            "idArtista": fila.idartista,
+            "numOyentes": int(fila.numoyentes or 0),
+            "valoracionMedia": int(fila.valoracionmedia or 0),
         }
 
-    def get_contenido_valoracion(self, id_contenido: int, es_album: bool):
-        """Obtiene la valoración media actual de un contenido."""
-        fila = self.contenidosMensualesDAO.obtener_por_id(id_contenido)
-        if not fila:
-            return None
-        total_val = int(fila.numValoraciones or 0)
-        media = float(fila.sumaValoraciones) / total_val if total_val > 0 else 0.0
-        return {
-            "idElemento": fila.idContenido,
-            "nombre": None,  # Puedes completarlo con datos del MS Contenido
-            "esAlbum": bool(fila.esAlbum),
-            "valoracionMedia": round(media, 2),
-            "totalValoraciones": total_val,
-            "numComentarios": int(fila.numComentarios or 0),
-            "numReproducciones": int(fila.numReproducciones or 0)
-        }
+    def get_ranking_artistas_oyentes(self):
+        filas = self.artistasMensualesDAO.obtener_ranking_oyentes()
+        return [
+            {
+                "idArtista": f.idartista,
+                "numOyentes": int(f.numoyentes or 0),
+                "valoracionMedia": int(f.valoracionmedia or 0),
+            }
+            for f in filas
+        ]
 
-    # ==========================================================
-    # PUT (sincronización con otros microservicios)
-    # ==========================================================
+    # ================== ARTISTAS (PUT: sincronización mensual) ==============
 
-    def sync_comunidad_activa(self, id_comunidad: int):
-        """
-        Llama al microservicio de Comunidad (Django) para obtener la actividad actual
-        y actualiza la tabla comunidadesMensual.
-        """
-        url = f"{MS_COMUNIDAD_BASE_URL}/v1/comunidades/{id_comunidad}/actividad"
-        resp = requests.get(url, timeout=8)
+    def sync_artista_oyentes(self, id_artista: int):
+        url = f"{MS_USUARIOS_BASE_URL}/api/usuarios/artistas/{id_artista}"
+
+        resp = requests.get(url, timeout=20)
+        if resp.status_code == 404:
+            raise HTTPException(status_code=404, detail="Artista no encontrado en MS Usuarios")
+
         resp.raise_for_status()
         data = resp.json()
 
-        # Espera recibir algo como: {"numPublicaciones": 245, "numMiembros": 1892, "nombre": "Fans Rock"}
-        fila = self.comunidadesMensualesDAO.upsert(
-            id_comunidad=id_comunidad,
-            num_publicaciones=int(data.get("numPublicaciones", 0)),
-            num_miembros=int(data.get("numMiembros", 0))
+        # Accedemos directamente a los campos del JSON
+        oyentes = data.get("oyentes", 0)
+        valoracion = data.get("valoracion", 0)  # 'valoracion' de la API de tu compañero
+
+        # Actualizamos en la base de datos
+        # Cambié 'valoracionmedia' a 'valoracion_media' para coincidir con el parámetro esperado
+        self.artistasMensualesDAO.upsert(
+            id_artista=id_artista,
+            num_oyentes=oyentes,
+            valoracion_media=valoracion  # Aquí pasamos 'valoracion_media' para que coincida con el DAO
         )
 
         return {
-            "idComunidad": fila.idComunidad,
-            "nombre": data.get("nombre"),
-            "numPublicaciones": int(fila.numPublicaciones),
-            "numMiembros": int(fila.numMiembros)
+            "idArtista": id_artista,
+            "numOyentes": oyentes,
+            "valoracionMedia": valoracion
         }
+    
+    def obtener_artistas_desde_api(self):
+        url = f"{MS_USUARIOS_BASE_URL}/api/usuarios/artistas"  # endpoint de lista de artistas
 
-    def sync_contenido_valoracion(self, id_contenido: int, es_album: bool):
-        """
-        Llama al microservicio de Contenido (Spring/Oracle) para obtener
-        los datos de valoraciones, comentarios y reproducciones,
-        y actualiza la tabla contenidosMensual.
-        """
-        tipo = "album" if es_album else "cancion"
-        url = f"{MS_CONTENIDO_BASE_URL}/v1/{tipo}s/{id_contenido}/valoraciones"
-        resp = requests.get(url, timeout=8)
-        resp.raise_for_status()
-        data = resp.json()
+        try:
+            resp = requests.get(url, timeout=20)
+            resp.raise_for_status()
+            return resp.json()  # lista completa con todos los artistas
+        except Exception as e:
+            print("❌ Error obteniendo artistas desde MS Usuarios:", e)
+            return []
+        
+    def sync_todos_los_artistas(self):
+        artistas = self.obtener_artistas_desde_api()
 
-        # Ejemplo de respuesta esperada:
-        # {"sumaValoraciones": 1500, "numValoraciones": 300, "numComentarios": 45, "numReproducciones": 12000}
-        fila = self.contenidosMensualesDAO.upsert(
-            id_contenido=id_contenido,
-            es_album=bool(es_album),
-            suma_val=float(data.get("sumaValoraciones", 0)),
-            num_val=int(data.get("numValoraciones", 0)),
-            num_com=int(data.get("numComentarios", 0)),
-            num_rep=int(data.get("numReproducciones", 0))
-        )
+        if not artistas:
+            print("⚠️ No se pudo obtener la lista de artistas")
+            return
 
-        total_val = int(fila.numValoraciones or 0)
-        media = float(fila.sumaValoraciones) / total_val if total_val > 0 else 0.0
+        print(f"🔄 Sincronizando {len(artistas)} artistas...")
 
-        return {
-            "idElemento": fila.idContenido,
-            "nombre": data.get("nombre"),
-            "esAlbum": bool(fila.esAlbum),
-            "valoracionMedia": round(media, 2),
-            "totalValoraciones": total_val,
-            "numComentarios": int(fila.numComentarios or 0),
-            "numReproducciones": int(fila.numReproducciones or 0)
-        }
+        resultados = []
+        for artista in artistas:
+            id_artista = artista["id"]  
+            try:
+                resultado = self.sync_artista_oyentes(id_artista)
+                resultados.append(resultado)
+            except Exception as e:
+                print(f"❌ Error sincronizando artista {id_artista}:", e)
+
+        print("✅ Sincronización completa")
+        return resultados
+
+
+
+
+
+
+
+
+
+
+ 

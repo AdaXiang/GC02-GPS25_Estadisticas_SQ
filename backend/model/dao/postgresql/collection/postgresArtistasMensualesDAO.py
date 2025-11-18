@@ -1,47 +1,53 @@
-from sqlalchemy.orm import Session
-from backend.model.dto.artistaMensualDTO import ArtistaMensual
-from backend.model.dao.interfaceArtistasMensualesDao import InterfaceArtistasMensualesDao
+from backend.model.dao.postgresql.posgresConnector import SessionLocal
+from backend.model.dao.postgresql.models import ArtistasMensual
 
-class PostgresArtistasMensualesDAO(InterfaceArtistasMensualesDao):
-    """
-    Implementación concreta de la interfaz InterfaceArtistasMensualesDao
-    para PostgreSQL usando SQLAlchemy.
-    """
+class PostgresArtistasMensualesDAO:
 
-    def __init__(self, db: Session):
-        self.db = db
+    def upsert(self, id_artista: int, num_oyentes: int, valoracion_media: float):
+        session = SessionLocal()
+        try:
+            fila = session.query(ArtistasMensual).filter_by(idartista=id_artista).first()
+
+            if fila:
+                fila.numoyentes = num_oyentes
+                fila.valoracionmedia = valoracion_media
+            else:
+                fila = ArtistasMensual(
+                    idartista=id_artista,
+                    numoyentes=num_oyentes,
+                    valoracionmedia=valoracion_media
+                )
+                session.add(fila)
+
+            session.commit()
+            session.refresh(fila)
+            return fila
+
+        except Exception as e:
+            session.rollback()
+            raise e
+
+        finally:
+            session.close()
 
     def obtener_por_id(self, id_artista: int):
-        return self.db.query(ArtistaMensual).filter_by(idArtista=id_artista).first()
+        session = SessionLocal()
+        try:
+            return session.query(ArtistasMensual).filter_by(idartista=id_artista).first()
+        finally:
+            session.close()
 
-    def listar_todos(self):
-        return self.db.query(ArtistaMensual).all()
+    def obtener_ranking_oyentes(self, limite: int = 10):
+        session = SessionLocal()
+        try:
+            return (
+                session.query(ArtistasMensual)
+                .order_by(ArtistasMensual.numoyentes.desc())
+                .limit(limite)
+                .all()
+            )
+        finally:
+            session.close()
+        
 
-    def insertar(self, id_artista: int, num_oyentes: int, num_seguidores: int):
-        nuevo = ArtistaMensual(
-            idArtista=id_artista,
-            numOyentes=num_oyentes,
-            numSeguidores=num_seguidores
-        )
-        self.db.add(nuevo)
-        self.db.commit()
-        self.db.refresh(nuevo)
-        return nuevo
 
-    def actualizar(self, id_artista: int, num_oyentes: int, num_seguidores: int):
-        artista = self.db.query(ArtistaMensual).filter_by(idArtista=id_artista).first()
-        if artista:
-            artista.numOyentes = num_oyentes
-            artista.numSeguidores = num_seguidores
-            self.db.commit()
-            self.db.refresh(artista)
-            return artista
-        return None
-
-    def eliminar(self, id_artista: int):
-        artista = self.db.query(ArtistaMensual).filter_by(idArtista=id_artista).first()
-        if artista:
-            self.db.delete(artista)
-            self.db.commit()
-            return True
-        return False
