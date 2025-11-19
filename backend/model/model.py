@@ -10,6 +10,7 @@ class Model:
         self.factory = PostgreSQLDAOFactory()
         # Instancias de los DAOs que se usan en este microservicio
         self.artistasMensualesDAO = self.factory.get_artistas_mensuales_dao()
+        self.busquedasArtistasDAO = self.factory.get_busquedas_artistas_dao()
 
     def get_artista_oyentes(self, id_artista: int):
         fila = self.artistasMensualesDAO.obtener_por_id(id_artista)
@@ -22,15 +23,16 @@ class Model:
         }
 
     def get_ranking_artistas_oyentes(self):
-        filas = self.artistasMensualesDAO.obtener_ranking_oyentes()
-        return [
-            {
-                "idArtista": f.idartista,
-                "numOyentes": int(f.numoyentes or 0),
-                "valoracionMedia": int(f.valoracionmedia or 0),
-            }
-            for f in filas
-        ]
+            filas = self.artistasMensualesDAO.obtener_ranking_oyentes()
+            return [
+                {
+                    # CAMBIOS AQUÍ: Usa los nombres exactos definidos en tu DTO
+                    "idArtista": f.idArtista,         # Antes tenías f.idartista
+                    "numOyentes": int(f.numOyentes or 0),     # Antes tenías f.numoyentes
+                    "valoracionMedia": int(f.valoracionMedia or 0), # Antes tenías f.valoracionmedia
+                }
+                for f in filas
+            ]
 
     # ================== ARTISTAS (PUT: sincronización mensual) ==============
 
@@ -48,12 +50,11 @@ class Model:
         oyentes = data.get("oyentes", 0)
         valoracion = data.get("valoracion", 0)  # 'valoracion' de la API de tu compañero
 
-        # Actualizamos en la base de datos
-        # Cambié 'valoracionmedia' a 'valoracion_media' para coincidir con el parámetro esperado
+        # Llamamos a 'upsert' pasando los parámetros individuales
         self.artistasMensualesDAO.upsert(
             id_artista=id_artista,
             num_oyentes=oyentes,
-            valoracion_media=valoracion  # Aquí pasamos 'valoracion_media' para que coincida con el DAO
+            valoracion_media=valoracion
         )
 
         return {
@@ -61,6 +62,7 @@ class Model:
             "numOyentes": oyentes,
             "valoracionMedia": valoracion
         }
+
     
     def obtener_artistas_desde_api(self):
         url = f"{MS_USUARIOS_BASE_URL}/api/usuarios/artistas"  # endpoint de lista de artistas
@@ -94,6 +96,28 @@ class Model:
         print("✅ Sincronización completa")
         return resultados
 
+    # ================== BUSQUEDAS ARTISTAS ==================
+    def registrar_o_actualizar_busqueda_artista(self, id_artista: int, id_usuario: int | None = None):
+        print(f"✅ Registrando o actualizando búsqueda para el artista {id_artista} y el usuario {id_usuario}")
+        self.busquedasArtistasDAO.insertar_o_actualizar_busqueda(id_artista, id_usuario)
+
+
+    def get_top_artistas_busquedas(self, limit: int = 10):
+        """
+        Devuelve el top de artistas más buscados del mes.
+
+        Como machacas las estadísticas cada mes con el scheduler
+        (borrando la tabla), esta consulta siempre refleja el
+        mes actual.
+        """
+        filas = self.busquedasArtistasDAO.get_top_artistas_busquedas(limit)
+        return [
+            {
+                "idArtista": f.idArtista,
+                "numBusquedas": int(f.numBusquedas or 0)
+            }
+            for f in filas
+        ]
 
 
 
