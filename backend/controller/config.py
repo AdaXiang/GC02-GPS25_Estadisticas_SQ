@@ -10,8 +10,10 @@ USUARIOS_API_TOKEN = os.getenv("USUARIOS_API_TOKEN", "")
 
 # URL AÚN NO DEFINIDAS
 MS_USUARIOS_BASE_URL = "http://localhost:3000"  # Node + Postgres (usuarios)
-MS_CONTENIDO_BASE_URL = os.getenv("MS_CONTENIDO_BASE_URL", "http://localhost:8002")
-MS_COMUNIDAD_BASE_URL = os.getenv("MS_COMUNIDAD_BASE_URL", "http://localhost:8003")
+CONTENIDO_API_BASE_URL = os.getenv(
+    "MS_CONTENIDO_BASE_URL", 
+    "http://localhost:8083/api"
+)
 
 
 

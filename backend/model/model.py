@@ -1,7 +1,8 @@
 from fastapi import HTTPException
 import requests
 from backend.model.dao.postgresql.postgresDAOFactory import PostgreSQLDAOFactory
-from backend.controller.config import MS_COMUNIDAD_BASE_URL, MS_CONTENIDO_BASE_URL, MS_USUARIOS_BASE_URL
+from backend.controller.config import MS_USUARIOS_BASE_URL, CONTENIDO_API_BASE_URL
+from backend.model.dto.numReproContenidoDTO import NumReproContenidoDTO
 
 
 class Model:
@@ -11,15 +12,18 @@ class Model:
         # Instancias de los DAOs que se usan en este microservicio
         self.artistasMensualesDAO = self.factory.get_artistas_mensuales_dao()
         self.busquedasArtistasDAO = self.factory.get_busquedas_artistas_dao()
+        self.num_repro_contenido_dao = self.factory.get_num_repro_contenido_dao()      
+        self.URL_CONTENIDOS = f"{CONTENIDO_API_BASE_URL}/elementos" 
+        self.URL_CANCIONES = f"{CONTENIDO_API_BASE_URL}/canciones"
 
     def get_artista_oyentes(self, id_artista: int):
         fila = self.artistasMensualesDAO.obtener_por_id(id_artista)
         if not fila:
             return None
         return {
-            "idArtista": fila.idartista,
-            "numOyentes": int(fila.numoyentes or 0),
-            "valoracionMedia": int(fila.valoracionmedia or 0),
+            "idArtista": fila.idArtista,
+            "numOyentes": int(fila.numOyentes or 0),
+            "valoracionMedia": int(fila.valoracionMedia or 0),
         }
 
     def get_ranking_artistas_oyentes(self):
@@ -118,6 +122,122 @@ class Model:
             }
             for f in filas
         ]
+        
+    # ================== CONTENIDO ==================    
+    def get_todos_los_contenidos(self):
+        filas = self.num_repro_contenido_dao.obtener_todos()
+        return [
+            {
+                "idContenido": f.idContenido,
+                "numReproducciones": int(f.numReproducciones or 0),
+                "esAlbum": f.esAlbum,
+                "numValoraciones": int(f.numValoraciones or 0),
+                "sumaValoraciones": int(f.sumaValoraciones or 0),
+                "numComentarios": int(f.numComentarios or 0)
+            }
+            for f in filas
+        ]
+
+    def sincronizar_desde_api_externa(self, id_contenido: int):
+            """
+            Recupera datos de la API de Contenidos y, si es canción, 
+            busca el numRep en la API de Canciones.
+            """
+            print(f"🔄 Sincronizando contenido ID: {id_contenido}...")
+
+            # -----------------------------------------------------
+            # PASO 1: Obtener información base (Valoración y Tipo)
+            # -----------------------------------------------------
+            try:
+                # Asumimos que existe un endpoint por ID: /api/contenidos/{id}
+                # Si no existe y solo tienes el de "todos", avísame, pero lo ideal es por ID.
+                resp_general = requests.get(f"{self.URL_CONTENIDOS}/{id_contenido}")
+                resp_general.raise_for_status()
+                data_general = resp_general.json()
+            except Exception as e:
+                print(f"❌ Error conectando con API Contenidos: {e}")
+                raise e
+
+            # Mapeo según tu JSON de ejemplo:
+            # tipo: 1 = Álbum (Electric Dreams)
+            # tipo: 2 = Canción (Electric, Wave)
+            tipo_contenido = data_general.get("tipo")
+            valoracion = data_general.get("valoracion", 0)
+            
+            # Determinar si es álbum
+            es_album = (tipo_contenido == 1) 
+
+            # -----------------------------------------------------
+            # PASO 2: Obtener reproducciones (numRep)
+            # -----------------------------------------------------
+            num_reproducciones = 0
+
+            if tipo_contenido == 2: # Si es CANCIÓN
+                try:
+                    # Llamamos a la API específica de canciones para sacar el numRep
+                    # Endpoint: /api/canciones/{id} (Suponiendo que existe para 1 canción)
+                    resp_cancion = requests.get(f"{self.URL_CANCIONES}/{id_contenido}")
+                    
+                    if resp_cancion.status_code == 200:
+                        data_cancion = resp_cancion.json()
+                        # En tu segundo JSON, el campo es "numRep"
+                        num_reproducciones = data_cancion.get("numRep", 0)
+                    else:
+                        print(f"⚠️ No se pudo obtener detalles de canción {id_contenido}. Status: {resp_cancion.status_code}")
+
+                except Exception as e:
+                    print(f"⚠️ Error conectando con API Canciones (se usará 0 repros): {e}")
+            
+            # Si es ÁLBUM (tipo 1), normalmente las reproducciones son la suma de sus canciones
+            # o 0 si no se trakean a nivel de álbum. Lo dejamos en 0 o lo que venga si la API cambia.
+            
+            # -----------------------------------------------------
+            # PASO 3: Crear DTO y Guardar
+            # -----------------------------------------------------
+            dto = NumReproContenidoDTO(
+                idcontenido=id_contenido,
+                numreproducciones=int(num_reproducciones),
+                esalbum=bool(es_album),
+                sumavaloraciones=float(valoracion), # Guardamos la valoración actual
+                numvaloraciones=1, # Placeholder ya que la API externa no devuelve 'cantidad' de votos, solo el promedio
+                numcomentarios=0
+            )
+
+            self.num_repro_contenido_dao.actualizar_o_insertar(dto)
+
+            return {
+                "id": id_contenido,
+                "tipo_detectado": "Album" if es_album else "Cancion",
+                "reproducciones_guardadas": num_reproducciones,
+                "valoracion_guardada": valoracion
+            }
+
+    def get_contenido_reproducciones(self, id_contenido: int):
+        fila = self.num_repro_contenido_dao.obtener_por_id(id_contenido)
+        if not fila:
+            return None
+        
+        # Devolvemos un diccionario simple o el objeto, según prefieras en tu controller
+        return {
+            "idContenido": fila.idContenido,
+            "numReproducciones": fila.numReproducciones
+        }
+
+    def update_contenido_reproducciones(self, id_contenido: int, nuevas_reproducciones: int):
+        # Intentamos actualizar
+        actualizado = self.num_repro_contenido_dao.actualizar_reproducciones(id_contenido, nuevas_reproducciones)
+        
+        if not actualizado:
+            # AQUI PODRIAMOS LLAMAR AL MICROSERVICIO JAVA PARA VERIFICAR SI EXISTE
+
+            return None
+            
+        return {
+            "idContenido": id_contenido,
+            "numReproducciones": nuevas_reproducciones,
+            "mensaje": "Actualizado correctamente"
+        }
+    
 
 
 

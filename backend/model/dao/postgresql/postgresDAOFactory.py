@@ -1,6 +1,7 @@
 from backend.model.dao.postgresql.posgresConnector import PostgreSQLConnector
 from backend.model.dao.postgresql.collection.postgresArtistasMensualesDAO import PostgresArtistasMensualesDAO
 from backend.model.dao.postgresql.collection.busquedasArtistasDAO import BusquedasArtistasDAO
+from backend.model.dao.postgresql.collection.postgresNumReproContenidoDAO import PostgresNumReproContenidoDAO
 
 class PostgreSQLDAOFactory:
 
@@ -14,4 +15,8 @@ class PostgreSQLDAOFactory:
     
     def get_busquedas_artistas_dao(self):
         return BusquedasArtistasDAO(self.db)
+    
+    def get_num_repro_contenido_dao(self):
+        return PostgresNumReproContenidoDAO(self.db)
+
 
