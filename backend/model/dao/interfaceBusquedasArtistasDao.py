@@ -17,4 +17,13 @@ class InterfaceBusquedasArtistasDao(ABC):
     def get_top_artistas_busquedas(self, limit: int = 10) -> List[BusquedaArtistaDTO]:
         """Devuelve el ranking de artistas más buscados del mes."""
         pass
+    
+    @abstractmethod
+    def eliminar_busquedas_por_artista(self, id_artista: int) -> bool:
+        """Elimina todas las búsquedas asociadas a un artista dado su ID."""
+        pass
 
+    @abstractmethod
+    def eliminar_busquedas_por_usuario(self, id_usuario: int) -> bool:
+        """Elimina todas las búsquedas asociadas a un usuario dado su ID."""
+        pass

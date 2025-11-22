@@ -87,3 +87,14 @@ class PostgresArtistasMensualesDAO(InterfaceArtistasMensualesDao):
             )
             for r in rows
         ]
+        
+    def eliminar(self, id_artista: int) -> bool:
+        """
+        Elimina el registro de un artista en la tabla de estadísticas mensuales.
+        Retorna True si se borró algo, False si no existía.
+        """
+        sql = text("DELETE FROM artistasmensual WHERE idartista = :id")
+        result = self.db.execute(sql, {"id": id_artista})
+        
+        # rowcount > 0 significa que se encontró y borró la fila
+        return result.rowcount > 0

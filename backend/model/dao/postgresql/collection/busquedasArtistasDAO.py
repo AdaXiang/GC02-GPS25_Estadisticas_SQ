@@ -58,3 +58,15 @@ class BusquedasArtistasDAO(InterfaceBusquedasArtistasDao):
             )
             for r in rows
         ]
+
+    def eliminar_busquedas_por_artista(self, id_artista: int) -> int:
+        """Elimina todas las búsquedas relacionadas con un artista específico."""
+        sql = text("DELETE FROM busquedasartistas WHERE idartista = :id")
+        result = self.db.execute(sql, {"id": id_artista})
+        return result.rowcount
+
+    def eliminar_busquedas_por_usuario(self, id_usuario: int) -> int:
+        """Elimina todas las búsquedas realizadas por un usuario específico."""
+        sql = text("DELETE FROM busquedasartistas WHERE idusuario = :id")
+        result = self.db.execute(sql, {"id": id_usuario})
+        return result.rowcount

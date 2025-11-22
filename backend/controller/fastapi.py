@@ -32,6 +32,15 @@ def resetear_busquedas_mensuales():
     except Exception as e:
         print("❌ Error al resetear búsquedas:", str(e))
 
+def actualizar_contenido_mensualmente():
+    print("🔄 Iniciando actualización mensual de CONTENIDOS...")
+    try:
+        # Llamamos al nuevo método masivo del modelo
+        model.sync_todos_los_contenidos()
+        print("✅ Actualización mensual de contenidos completada")
+    except Exception as e:
+        print("❌ Error durante la actualización mensual de contenidos:", str(e))
+
 # Configuración de lifespan (cuando el servidor se inicia y apaga)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -44,6 +53,15 @@ async def lifespan(app: FastAPI):
         scheduler.add_job(resetear_busquedas_mensuales, trigger="cron", day=1, hour=0, minute=1)
         print("🗓️ Scheduler mensual añadido (reset búsquedas)")
 
+        scheduler.add_job(actualizar_contenido_mensualmente, trigger="cron", day=1, hour=0, minute=5)
+        print("🗓️ Scheduler mensual añadido (Contenidos)")
+        # scheduler.add_job(
+        #     actualizar_contenido_mensualmente, 
+        #     trigger="interval", 
+        #     seconds=30,
+        #     id="test_sync_contenidos", # ID opcional pero útil
+        #     replace_existing=True
+        # )
         # Iniciar el scheduler
         scheduler.start()
         print("🗓️ Scheduler iniciado")

@@ -113,7 +113,51 @@ async def sync_oyentes_artista(request: Request):
             detail=f"Error interno al sincronizar oyentes: {str(e)}"
         )
 
+@router.delete("/artistas/{id_artista}")
+async def delete_artista_stats(id_artista: int, request: Request):
+    """
+    Elimina las estadísticas de un artista.
+    Maneja errores comunes:
+    - 400: ID inválido
+    - 404: Artista no encontrado en estadísticas
+    - 500: Error interno de servidor
+    """
+    try:
+        # 400 - Validación manual del parámetro
+        if id_artista <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="El ID del artista debe ser un número entero positivo."
+            )
 
+        # Llamada al modelo
+        # (Asumiendo que 'model' está disponible en request.app.state o globalmente)
+        # model = request.app.state.model  <-- Descomenta si lo obtienes del state
+        data = model.delete_artista_estadisticas(id_artista)
+
+        # 404 - No se encontró registro para borrar
+        if not data:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No se encontraron estadísticas para el artista con ID {id_artista}."
+            )
+
+        return data
+
+    # 422 - Validación de tipos (FastAPI suele capturarlo antes, pero por consistencia)
+    except ValueError:
+        raise HTTPException(
+            status_code=422,
+            detail="El parámetro proporcionado no es válido."
+        )
+
+    # 500 - Error interno (Base de datos, etc.)
+    except Exception as e:
+        print(f"❌ Error en delete_artista_stats: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error interno al eliminar el artista: {str(e)}"
+        )
 
 @router.get("/artistas/ranking/oyentes")
 async def ranking_oyentes(request: Request):
@@ -143,7 +187,6 @@ async def ranking_oyentes(request: Request):
             status_code=500,
             detail=f"Error interno al obtener ranking: {str(e)}"
         )
-
 
 
 @router.put("/artistas/busqueda")
@@ -204,6 +247,60 @@ async def registrar_busqueda_artista(request: Request):
             status_code=500,
             detail=f"Error interno al registrar la búsqueda."
         )
+    
+# ==========================================
+# DELETE BÚSQUEDAS POR ARTISTA
+# ==========================================
+@router.delete("/artistas/busqueda/artista/{id_artista}")
+async def delete_busquedas_por_artista(id_artista: int, request: Request):
+    """
+    Elimina el historial de búsquedas asociado a un artista.
+    Útil cuando se elimina un artista del sistema.
+    """
+    try:
+        # Validación manual
+        if id_artista <= 0:
+            raise HTTPException(status_code=400, detail="El ID del artista debe ser positivo.")
+
+        # Llamada al modelo
+        # model = request.app.state.model (Si lo usas desde state)
+        resultado = model.delete_busquedas_artista(id_artista)
+
+        # Nota: No devolvemos 404 si borra 0 filas, porque el objetivo es "limpiar".
+        # Si ya estaba limpio, misión cumplida (200 OK).
+        return resultado
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error eliminando búsquedas de artista: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+
+# ==========================================
+# DELETE BÚSQUEDAS POR USUARIO
+# ==========================================
+@router.delete("/artistas/busqueda/usuario/{id_usuario}")
+async def delete_busquedas_por_usuario(id_usuario: int, request: Request):
+    """
+    Elimina el historial de búsquedas realizado por un usuario.
+    Útil cuando se elimina un usuario del sistema (GDPR/Limpieza).
+    """
+    try:
+        # Validación manual
+        if id_usuario <= 0:
+            raise HTTPException(status_code=400, detail="El ID del usuario debe ser positivo.")
+
+        # Llamada al modelo
+        resultado = model.delete_busquedas_usuario(id_usuario)
+
+        return resultado
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error eliminando búsquedas de usuario: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 @router.get("/artistas/top")
 async def get_top_artistas(request: Request, limit: int = 10):
@@ -330,3 +427,182 @@ async def sincronizar_contenido(request: Request):
     except Exception as e:
         print(f"❌ Error interno: {e}")
         raise HTTPException(status_code=500, detail="Error interno del servidor.")
+    
+@router.get("/contenido/{id_contenido}")
+async def get_estadisticas_contenido(id_contenido: int, request: Request):
+    """ Obtiene las estadísticas (ventas, comentarios, etc.) """
+    try:
+        if id_contenido <= 0:
+            raise HTTPException(status_code=400, detail="El ID debe ser positivo.")
+
+        data = model.get_contenido_detalle(id_contenido)
+
+        if not data:
+            raise HTTPException(status_code=404, detail=f"No existen estadísticas para ID {id_contenido}.")
+
+        return data
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"❌ Error GET contenido: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+
+@router.delete("/contenido/{id_contenido}")
+async def delete_estadisticas_contenido(id_contenido: int, request: Request):
+    """ Elimina el registro de estadísticas """
+    try:
+        if id_contenido <= 0:
+            raise HTTPException(status_code=400, detail="El ID debe ser positivo.")
+
+        resultado = model.delete_contenido(id_contenido)
+
+        if not resultado:
+            raise HTTPException(status_code=404, detail=f"No encontrado ID {id_contenido}.")
+
+        return resultado
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"❌ Error DELETE contenido: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+    
+# ==========================================
+# 1. TOP VALORACIÓN
+# ==========================================
+@router.get("/contenidos/valoracion/top")
+async def get_top_valoracion(request: Request, limit: int = 10):
+    """
+    Devuelve el top de contenidos mejor valorados.
+    """
+    try:
+        # Validación de 'limit'
+        if limit <= 0:
+            raise HTTPException(
+                status_code=400, 
+                detail="'limit' debe ser un entero positivo."
+            )
+        
+        if limit > 100:
+            raise HTTPException(
+                status_code=400, 
+                detail="'limit' no puede ser mayor que 100."
+            )
+
+        # Llamada al modelo
+        top = model.get_top_contenidos_valoracion(limit=limit)
+
+        # 404 - Si la lista está vacía
+        if not top or len(top) == 0:
+            raise HTTPException(
+                status_code=404, 
+                detail="No hay datos de valoración para este periodo."
+            )
+
+        return top
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error interno en get_top_valoracion: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail="Error interno al obtener el top de valoraciones."
+        )
+
+
+# ==========================================
+# 2. TOP COMENTARIOS
+# ==========================================
+@router.get("/contenidos/comentarios/top")
+async def get_top_comentarios(request: Request, limit: int = 10):
+    """
+    Devuelve el top de contenidos con más comentarios.
+    """
+    try:
+        if limit <= 0:
+            raise HTTPException(status_code=400, detail="'limit' debe ser positivo.")
+        if limit > 100:
+            raise HTTPException(status_code=400, detail="'limit' no puede ser mayor que 100.")
+
+        top = model.get_top_contenidos_comentarios(limit=limit)
+
+        if not top or len(top) == 0:
+            raise HTTPException(
+                status_code=404, 
+                detail="No hay datos de comentarios para este periodo."
+            )
+
+        return top
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error interno en get_top_comentarios: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail="Error interno al obtener el top de comentarios."
+        )
+
+
+# ==========================================
+# 3. TOP VENTAS
+# ==========================================
+@router.get("/contenidos/ventas/top")
+async def get_top_ventas(request: Request, limit: int = 10):
+    """
+    Devuelve el top de contenidos más vendidos.
+    """
+    try:
+        if limit <= 0:
+            raise HTTPException(status_code=400, detail="'limit' debe ser positivo.")
+        if limit > 100:
+            raise HTTPException(status_code=400, detail="'limit' no puede ser mayor que 100.")
+
+        top = model.get_top_contenidos_ventas(limit=limit)
+
+        if not top or len(top) == 0:
+            raise HTTPException(
+                status_code=404, 
+                detail="No hay datos de ventas para este periodo."
+            )
+
+        return top
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error interno en get_top_ventas: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail="Error interno al obtener el top de ventas."
+        )
+        
+@router.get("/contenidos/genero/top")
+async def get_top_generos(request: Request, limit: int = 5):
+    """
+    Devuelve los géneros musicales con más ventas acumuladas.
+    Ejemplo: Rock (1500 ventas), Pop (1200 ventas).
+    """
+    try:
+        model = request.app.state.model
+        
+        if limit <= 0 or limit > 100:
+            limit = 5  # Valor por defecto seguro
+            
+        ranking = model.get_top_generos(limit=limit)
+
+        if not ranking:
+            # Opción A: Devolver 404
+            # raise HTTPException(status_code=404, detail="No hay datos de géneros.")
+            # Opción B: Devolver lista vacía (a veces es mejor para frontend)
+            return []
+
+        return ranking
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
