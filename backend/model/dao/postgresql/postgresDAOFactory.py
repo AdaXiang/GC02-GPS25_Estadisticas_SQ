@@ -1,6 +1,6 @@
 from backend.model.dao.postgresql.posgresConnector import PostgreSQLConnector
 from backend.model.dao.postgresql.collection.postgresArtistasMensualesDAO import PostgresArtistasMensualesDAO
-from backend.model.dao.postgresql.collection.busquedasArtistasDAO import BusquedasArtistasDAO
+from backend.model.dao.postgresql.collection.postgresBusquedasArtistasDAO import BusquedasArtistasDAO
 from backend.model.dao.postgresql.collection.postgresContenidoDAO import PostgresContenidoDAO
 
 class PostgreSQLDAOFactory:

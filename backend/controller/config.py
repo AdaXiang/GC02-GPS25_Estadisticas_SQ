@@ -8,14 +8,19 @@ USUARIOS_API_BASE_URL = os.getenv(
 )
 USUARIOS_API_TOKEN = os.getenv("USUARIOS_API_TOKEN", "")  
 
-# URL AÚN NO DEFINIDAS
-MS_USUARIOS_BASE_URL = "http://localhost:3000"  # Node + Postgres (usuarios)
+# --- CAMBIO AQUÍ ---
+# Antes tenías: MS_USUARIOS_BASE_URL = "http://localhost:3000"
+# Ahora ponemos esto para que lea la variable de Docker:
+MS_USUARIOS_BASE_URL = os.getenv(
+    "MS_USUARIOS_BASE_URL", 
+    "http://localhost:3000"
+)
+# -------------------
+
 CONTENIDO_API_BASE_URL = os.getenv(
     "MS_CONTENIDO_BASE_URL", 
     "http://localhost:8083/api"
 )
-
-
 
 def setup_cors(app):
     app.add_middleware(

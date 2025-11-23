@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  # 1. Base de datos (Dentro de Docker)
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: estadisticas
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+
+  # 2. Tu API (Dentro de Docker)
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      # CONEXIÓN 1: A la BD (que también está en Docker)
+      # Aquí usamos el nombre del servicio 'db'
+      - DATABASE_URL=postgresql://postgres:password123@db:5432/estadisticas
+      
+      # CONEXIÓN 2: A los otros servicios (que están en tu Windows)
+      # Aquí usamos 'host.docker.internal' para salir a tu PC
+      - USUARIOS_API_BASE_URL=http://host.docker.internal:3000/api/usuarios
+      - MS_USUARIOS_BASE_URL=http://host.docker.internal:3000
+      - MS_CONTENIDO_BASE_URL=http://host.docker.internal:8083/api
+
+volumes:
+  postgres_data:

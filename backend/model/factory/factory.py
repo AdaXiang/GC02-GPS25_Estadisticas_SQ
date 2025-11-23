@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from backend.model.dao.postgresql.collection.busquedasArtistasDAO import BusquedasArtistasDAO
+from backend.model.dao.postgresql.collection.postgresBusquedasArtistasDAO import BusquedasArtistasDAO
 from backend.model.dao.postgresql.collection.postgresArtistasMensualesDAO import PostgresArtistasMensualesDAO
 from backend.model.dao.postgresql.collection.postgresContenidoDAO import PostgresContenidoDAO
 
