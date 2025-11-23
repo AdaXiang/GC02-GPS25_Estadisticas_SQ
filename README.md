@@ -1,4 +1,3 @@
-````markdown
 # 📊 Microservicio de Estadísticas
 
 Este es el microservicio encargado de gestionar las estadísticas (oyentes, valoraciones, visualizaciones) de la plataforma. Está construido con **FastAPI** y utiliza **PostgreSQL** como base de datos.
