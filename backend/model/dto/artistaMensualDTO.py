@@ -3,3 +3,10 @@ class ArtistaMensualDTO:
         self.idArtista = idartista
         self.numOyentes = numOyentes
         self.valoracionMedia = valoracionmedia
+
+    def to_dict(self):
+        return {
+            "idArtista": self.idArtista,
+            "numOyentes": self.numOyentes,
+            "valoracionMedia": self.valoracionMedia
+        }

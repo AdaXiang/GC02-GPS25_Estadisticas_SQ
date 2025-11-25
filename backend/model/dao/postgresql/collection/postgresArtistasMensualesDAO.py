@@ -1,100 +1,103 @@
 from sqlalchemy import text
 from backend.model.dto.artistaMensualDTO import ArtistaMensualDTO
-from backend.model.dao.interfaceArtistasMensualesDao import InterfaceArtistasMensualesDao
+# Asegúrate de importar la interfaz correcta si la usas, o heredar de object
+# from backend.model.dao.interfaceArtistasMensualesDao import InterfaceArtistasMensualesDao
 
-
-class PostgresArtistasMensualesDAO(InterfaceArtistasMensualesDao):
+class PostgresArtistasMensualesDAO:
     
     def __init__(self, db):
-        self.db = db  # Usamos la sesión recibida del Factory, como en el otro DAO
+        self.db = db
 
-# ...existing code...
-    def upsert(self, id_artista: int, num_oyentes: int = 0, valoracion_media: int = 0) -> bool:
+    def actualizar_o_insertar(self, dto: ArtistaMensualDTO) -> bool:
         """
-        Inserta o actualiza un registro de artista mensual.
-        Acepta parámetros individuales en lugar de un DTO.
+        Inserta o actualiza un registro usando el DTO estandarizado.
         """
         try:
-            # Comprobar si el artista existe
-            sql_select = text("""
-                SELECT idartista FROM artistasmensual
-                WHERE idartista = :id
-            """)
-            res = self.db.execute(sql_select, {"id": id_artista}).fetchone()  # Trae una fila o None
+            # Comprobar si existe
+            sql_check = text("SELECT idartista FROM artistasmensual WHERE idartista = :id")
+            existe = self.db.execute(sql_check, {"id": dto.idArtista}).fetchone()
 
-            if res:
-                # Si el artista existe, actualizar los datos
+            if existe:
+                # UPDATE
                 sql_update = text("""
                     UPDATE artistasmensual
-                    SET numoyentes = :num, valoracionmedia = :val
+                    SET numoyentes = :no, valoracionmedia = :vm
                     WHERE idartista = :id
                 """)
-                self.db.execute(sql_update, {"id": id_artista, "num": num_oyentes, "val": valoracion_media})
-                print(f"✅ Artista {id_artista} actualizado")
+                self.db.execute(sql_update, {
+                    "id": dto.idArtista, 
+                    "no": dto.numOyentes, 
+                    "vm": dto.valoracionMedia
+                })
             else:
-                # Si el artista no existe, insertar un nuevo registro
+                # INSERT
                 sql_insert = text("""
                     INSERT INTO artistasmensual (idartista, numoyentes, valoracionmedia)
-                    VALUES (:id, :num, :val)
+                    VALUES (:id, :no, :vm)
                 """)
-                self.db.execute(sql_insert, {"id": id_artista, "num": num_oyentes, "val": valoracion_media})
-                print(f"✅ Artista {id_artista} insertado")
+                self.db.execute(sql_insert, {
+                    "id": dto.idArtista, 
+                    "no": dto.numOyentes, 
+                    "vm": dto.valoracionMedia
+                })
 
-            # Commit de la transacción
-            self.db.commit()
-            return True  # Se devolvió 'True' indicando que la operación fue exitosa
+            return True
 
         except Exception as e:
-            # Si hay un error, revertir la transacción
-            self.db.rollback()
-            print(f"❌ Error al actualizar/insertar artista {id_artista}: {e}")
-            return False  # Retornamos False en caso de error
+            print(f"❌ Error DAO Artistas Upsert: {e}")
+            raise e
 
+    def obtener_todos(self) -> list[ArtistaMensualDTO]:
+        try:
+            sql = text("SELECT idartista, numoyentes, valoracionmedia FROM artistasmensual")
+            result = self.db.execute(sql).fetchall()
 
-# ...existing code...
+            return [
+                ArtistaMensualDTO(
+                    idartista=row.idartista,
+                    numOyentes=row.numoyentes,
+                    valoracionmedia=row.valoracionmedia
+                ) for row in result
+            ]
 
+        except Exception as e:
+            print(f"❌ Error DAO Artistas Obtener Todos: {e}")
+            raise e
+        
     def obtener_por_id(self, id_artista: int) -> ArtistaMensualDTO | None:
-        sql = text("""
-            SELECT idartista, numoyentes, valoracionmedia
-            FROM artistasmensual
-            WHERE idartista = :id
-        """)
-        row = self.db.execute(sql, {"id": id_artista}).fetchone()
+        try:
+            sql = text("SELECT idartista, numoyentes, valoracionmedia FROM artistasmensual WHERE idartista = :id")
+            row = self.db.execute(sql, {"id": id_artista}).fetchone()
 
-        if not row:
-            return None
+            if not row:
+                return None
 
-        return ArtistaMensualDTO(
-            idartista=row.idartista,
-            numOyentes=row.numoyentes,
-            valoracionmedia=row.valoracionmedia
-        )
-
-    def obtener_ranking_oyentes(self, limite: int = 10):
-        sql = text("""
-            SELECT idartista, numoyentes, valoracionmedia
-            FROM artistasmensual
-            ORDER BY numoyentes DESC
-            LIMIT :lim
-        """)
-        rows = self.db.execute(sql, {"lim": limite}).fetchall()
-
-        return [
-            ArtistaMensualDTO(
-                idartista=r.idartista,
-                numOyentes=r.numoyentes,
-                valoracionmedia=r.valoracionmedia
+            return ArtistaMensualDTO(
+                idartista=row.idartista,
+                numOyentes=row.numoyentes,
+                valoracionmedia=row.valoracionmedia
             )
-            for r in rows
-        ]
-        
-    def eliminar(self, id_artista: int) -> bool:
-        """
-        Elimina el registro de un artista en la tabla de estadísticas mensuales.
-        Retorna True si se borró algo, False si no existía.
-        """
-        sql = text("DELETE FROM artistasmensual WHERE idartista = :id")
-        result = self.db.execute(sql, {"id": id_artista})
-        
-        # rowcount > 0 significa que se encontró y borró la fila
-        return result.rowcount > 0
+        except Exception as e:
+            print(f"❌ Error DAO Artistas Obtener ID: {e}")
+            raise e
+
+    def obtener_ranking_oyentes(self, limite: int = 10) -> list[ArtistaMensualDTO]:
+        try:
+            sql = text("""
+                SELECT idartista, numoyentes, valoracionmedia
+                FROM artistasmensual
+                ORDER BY numoyentes DESC
+                LIMIT :lim
+            """)
+            result = self.db.execute(sql, {"lim": limite}).fetchall()
+
+            return [
+                ArtistaMensualDTO(
+                    idartista=row.idartista,
+                    numOyentes=row.numoyentes,
+                    valoracionmedia=row.valoracionmedia
+                ) for row in result
+            ]
+        except Exception as e:
+            print(f"❌ Error DAO Artistas Ranking: {e}")
+            raise e

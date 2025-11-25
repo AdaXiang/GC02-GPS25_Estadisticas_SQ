@@ -7,9 +7,20 @@ from backend.model.dao.postgresql.posgresConnector import PostgreSQLConnector  #
 from contextlib import asynccontextmanager
 from backend.controller.endpoints import router as estadisticas_router
 from backend.controller.endpoints import model  # Importar el modelo desde endpoints
+from fastapi.middleware.cors import CORSMiddleware
 
 # Inicializar la aplicación FastAPI
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    # Pon "*" para permitir TODOS los orígenes (lo más fácil para desarrollo)
+    # O pon ["http://localhost:3001"] para ser específico
+    allow_origins=["*"], 
+    allow_credentials=True,
+    allow_methods=["*"], # Permitir GET, POST, PUT, DELETE, etc.
+    allow_headers=["*"], # Permitir todas las cabeceras
+)
 
 # Inicializar el Scheduler (para tareas programadas)
 scheduler = BackgroundScheduler()
@@ -29,7 +40,7 @@ def resetear_busquedas_mensuales():
     try:
         model.registrar_o_actualizar_busqueda_artista()  # Llamar al modelo para resetear las búsquedas
         print("✅ Búsquedas reseteadas")
-    except Exception as e:
+    except Exception as e: 
         print("❌ Error al resetear búsquedas:", str(e))
 
 def actualizar_contenido_mensualmente():

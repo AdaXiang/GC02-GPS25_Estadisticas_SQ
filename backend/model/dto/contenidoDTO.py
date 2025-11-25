@@ -9,4 +9,15 @@ class ContenidoDTO:
         self.sumaValoraciones = sumavaloraciones
         self.numComentarios = numcomentarios
         self.genero = genero
-        self.esNovedad = esnovedad  
+        self.esNovedad = esnovedad
+
+    def to_dict(self):
+        return {
+            "idContenido": self.idContenido,
+            "numVentas": self.numVentas,
+            "esAlbum": self.esAlbum,
+            "sumaValoraciones": self.sumaValoraciones,
+            "numComentarios": self.numComentarios,
+            "genero": self.genero,
+            "esNovedad": self.esNovedad
+        }

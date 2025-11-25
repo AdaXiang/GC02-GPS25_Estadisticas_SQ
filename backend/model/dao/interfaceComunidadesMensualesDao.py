@@ -12,3 +12,27 @@ class InterfaceComunidadesMensualesDAO(ABC):
         """Inserta o actualiza una comunidad mensual."""
         pass 
 
+    @abstractmethod
+    def obtener_todas(self) -> List[dict]:
+        """Devuelve una lista de diccionarios con todas las comunidades."""
+        pass
+    
+    @abstractmethod
+    def eliminar(self, id_comunidad: int) -> bool:
+        """Elimina una comunidad por ID. Devuelve True si borró algo."""
+        pass
+    
+    @abstractmethod
+    def obtener_ranking_miembros(self, top_n: Optional[int] = 10) -> List[dict]:
+        """Devuelve el top N de comunidades con más miembros."""
+        pass
+    
+    @abstractmethod
+    def obtener_ranking_publicaciones(self, top_n: Optional[int] = 10) -> List[dict]:
+        """Devuelve el top N de comunidades con más publicaciones."""
+        pass
+    
+    @abstractmethod
+    def obtener_por_id(self, id_comunidad: int) -> Optional[dict]:
+        """Busca una comunidad por su ID."""
+        pass

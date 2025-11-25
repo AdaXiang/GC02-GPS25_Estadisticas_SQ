@@ -4,10 +4,40 @@ from backend.model.model import Model
 router = APIRouter(prefix="/estadisticas", tags=["Estadísticas"])
 model = Model()
 
-USUARIOS_API = "http://localhost:3000"   # API USUARIOS
-
 # ========================= ARTISTAS =========================
 
+@router.get("/artistas/oyentes")
+async def get_todos_oyentes_artistas(request: Request):
+    """
+    Obtiene los oyentes y valoración de TODOS los artistas.
+    """
+    try:
+        # Llamada al modelo
+        data = model.get_todos_los_artistas()
+
+        # Opcional: Si quieres devolver 404 si la lista está vacía
+        # if not data:
+        #    raise HTTPException(status_code=404, detail="No se encontraron artistas.")
+
+        return {
+            "status": "success",
+            "count": len(data),
+            "data": data
+        }
+
+    except Exception as e:
+        # Log del error para depuración
+        print(f"❌ Error en get_todos_oyentes_artistas: {e}")
+        
+        # Si ya es una excepción HTTP, la relanzamos
+        if isinstance(e, HTTPException):
+            raise e
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error interno al obtener el listado de artistas: {str(e)}"
+        )
+    
 @router.get("/artistas/oyentes/{id_artista}")
 async def get_oyentes_artista(id_artista: int, request: Request):
     """
@@ -131,8 +161,6 @@ async def delete_artista_stats(id_artista: int, request: Request):
             )
 
         # Llamada al modelo
-        # (Asumiendo que 'model' está disponible en request.app.state o globalmente)
-        # model = request.app.state.model  <-- Descomenta si lo obtienes del state
         data = model.delete_artista_estadisticas(id_artista)
 
         # 404 - No se encontró registro para borrar
@@ -263,7 +291,6 @@ async def delete_busquedas_por_artista(id_artista: int, request: Request):
             raise HTTPException(status_code=400, detail="El ID del artista debe ser positivo.")
 
         # Llamada al modelo
-        # model = request.app.state.model (Si lo usas desde state)
         resultado = model.delete_busquedas_artista(id_artista)
 
         # Nota: No devolvemos 404 si borra 0 filas, porque el objetivo es "limpiar".
@@ -587,8 +614,6 @@ async def get_top_generos(request: Request, limit: int = 5):
     Ejemplo: Rock (1500 ventas), Pop (1200 ventas).
     """
     try:
-        model = request.app.state.model
-        
         if limit <= 0 or limit > 100:
             limit = 5  # Valor por defecto seguro
             
@@ -639,3 +664,90 @@ async def sincronizar_comunidad(request: Request):
         if isinstance(e, HTTPException):
             raise e
         raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
+    
+@router.get("/comunidad")
+async def obtener_todas_las_comunidades():
+    """
+    Obtiene todas las estadísticas de comunidades almacenadas en BD local.
+    Ruta final: GET /estadisticas/comunidad
+    """
+    try:
+        datos = model.obtener_todas_las_comunidades()
+        return {
+            "status": "success",
+            "data": datos
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al obtener datos: {str(e)}")
+
+@router.delete("/comunidad/{id_comunidad}")
+async def eliminar_comunidad(id_comunidad: str):
+    """
+    Elimina una comunidad de la tabla de estadísticas.
+    Ruta final: DELETE /estadisticas/comunidad/{id}
+    """
+    try:
+        exito = model.eliminar_comunidad(id_comunidad)
+        
+        if not exito:
+            raise HTTPException(status_code=404, detail=f"Comunidad {id_comunidad} no encontrada.")
+            
+        return {
+            "status": "success",
+            "message": f"Comunidad {id_comunidad} eliminada correctamente."
+        }
+    except Exception as e:
+        if isinstance(e, HTTPException): raise e
+        raise HTTPException(status_code=500, detail=f"Error al eliminar: {str(e)}")
+    
+@router.get("/comunidad/ranking/miembros")
+async def ranking_miembros():
+    """
+    Obtiene el TOP 10 de comunidades con más miembros (seguidores).
+    Ruta: GET /estadisticas/comunidad/ranking/miembros
+    """
+    try:
+        datos = model.obtener_ranking_comunidades_miembros()
+        return {
+            "status": "success",
+            "message": "Ranking por miembros obtenido",
+            "data": datos
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al obtener ranking: {str(e)}")
+
+@router.get("/comunidad/ranking/publicaciones")
+async def ranking_publicaciones():
+    """
+    Obtiene el TOP 10 de comunidades con más actividad (publicaciones).
+    Ruta: GET /estadisticas/comunidad/ranking/publicaciones
+    """
+    try:
+        datos = model.obtener_ranking_comunidades_publicaciones()
+        return {
+            "status": "success",
+            "message": "Ranking por publicaciones obtenido",
+            "data": datos
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al obtener ranking: {str(e)}")
+    
+@router.get("/comunidad/{id_comunidad}")
+async def obtener_comunidad_por_id(id_comunidad: str):
+    """
+    Obtiene las estadísticas de una comunidad específica por ID.
+    Ruta: GET /estadisticas/comunidad/1
+    """
+    try:
+        resultado = model.obtener_comunidad_por_id(id_comunidad)
+        
+        if not resultado:
+             raise HTTPException(status_code=404, detail=f"Comunidad {id_comunidad} no encontrada.")
+
+        return {
+            "status": "success",
+            "data": resultado
+        }
+    except Exception as e:
+        if isinstance(e, HTTPException): raise e
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
