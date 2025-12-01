@@ -18,11 +18,6 @@ class InterfaceComunidadesMensualesDAO(ABC):
         pass
     
     @abstractmethod
-    def eliminar(self, id_comunidad: int) -> bool:
-        """Elimina una comunidad por ID. Devuelve True si borró algo."""
-        pass
-    
-    @abstractmethod
     def obtener_ranking_miembros(self, top_n: Optional[int] = 10) -> List[dict]:
         """Devuelve el top N de comunidades con más miembros."""
         pass
@@ -36,3 +31,9 @@ class InterfaceComunidadesMensualesDAO(ABC):
     def obtener_por_id(self, id_comunidad: int) -> Optional[dict]:
         """Busca una comunidad por su ID."""
         pass
+    
+    @abstractmethod
+    def eliminar(self, id_comunidad: int) -> bool:
+        """Elimina una comunidad por ID. Devuelve True si borró algo."""
+        pass
+    

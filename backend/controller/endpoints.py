@@ -751,3 +751,83 @@ async def obtener_comunidad_por_id(id_comunidad: str):
     except Exception as e:
         if isinstance(e, HTTPException): raise e
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+    
+
+# ==========================================
+#  REPRODUCCIONES
+# ==========================================
+@router.put("/reproducciones/registrar")
+async def registrar_reproduccion(request: Request):
+    """
+    Registra los segundos escuchados de una canción.
+    """
+    try:
+        try:
+            body = await request.json()
+        except Exception:
+            raise HTTPException(status_code=422, detail="JSON inválido")
+
+        id_usuario = body.get("idUsuario")
+        id_contenido = body.get("idContenido")
+        segundos = body.get("segundos")
+
+        # Validaciones
+        if not id_usuario or not isinstance(id_usuario, int):
+            raise HTTPException(status_code=400, detail="Falta 'idUsuario' válido.")
+            
+        if not id_contenido or not isinstance(id_contenido, int):
+            raise HTTPException(status_code=400, detail="Falta 'idContenido' válido.")
+            
+        if segundos is None or not isinstance(segundos, int) or segundos < 0:
+            raise HTTPException(status_code=400, detail="'segundos' debe ser un entero positivo.")
+
+        # Llamada al modelo
+        model.registrar_reproduccion(id_usuario, id_contenido, segundos)
+
+        return {"msg": "Reproducción registrada correctamente"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error interno en registrar_reproduccion: {e}")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
+    
+@router.get("/reproducciones/usuario/{id_usuario}")
+async def obtener_historial_reproducciones(id_usuario: int, request: Request):
+    """
+    Obtiene el historial de reproducciones de un usuario.
+    """
+    try:
+        if id_usuario <= 0:
+            raise HTTPException(status_code=400, detail="El ID del usuario debe ser positivo.")
+
+        historial = model.obtener_historial_personal(id_usuario)
+
+        if not historial or len(historial) == 0:
+            raise HTTPException(status_code=404, detail="No hay reproducciones para este usuario.")
+
+        return {
+            "status": "success",
+            "count": len(historial),
+            "data": historial
+        }
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"❌ Error obteniendo historial de reproducciones: {e}")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
+    
+@router.get("/reproducciones/top/usuario/{id_usuario}")
+async def get_top_reproducciones_por_usuario(id_usuario: int, limit: int = 5):
+    try:
+        if id_usuario <= 0:
+            raise HTTPException(status_code=400, detail="ID de usuario inválido")
+
+        return model.obtener_top_canciones_usuario(id_usuario, limit)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error endpoint top usuario: {e}")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")

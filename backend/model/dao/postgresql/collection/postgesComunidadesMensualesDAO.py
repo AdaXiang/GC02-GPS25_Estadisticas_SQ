@@ -1,7 +1,8 @@
 from sqlalchemy import text
 from backend.model.dto.comunidadMensualDTO import ComunidadDTO
+from backend.model.dao.interfaceComunidadesMensualesDao import InterfaceComunidadesMensualesDAO
 
-class PostgresComunidadesMensualesDAO:
+class PostgresComunidadesMensualesDAO(InterfaceComunidadesMensualesDAO):
     def __init__(self, db):
         self.db = db
 

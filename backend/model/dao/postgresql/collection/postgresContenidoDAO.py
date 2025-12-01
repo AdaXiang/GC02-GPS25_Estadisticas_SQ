@@ -1,7 +1,8 @@
 from sqlalchemy import text
 from backend.model.dto.contenidoDTO import ContenidoDTO
+from backend.model.dao.interfaceContenidoDao import InterfaceContenidoDao
 
-class PostgresContenidoDAO:
+class PostgresContenidoDAO(InterfaceContenidoDao):
     def __init__(self, db):
         self.db = db
         

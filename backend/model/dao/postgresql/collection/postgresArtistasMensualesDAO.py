@@ -1,9 +1,8 @@
 from sqlalchemy import text
 from backend.model.dto.artistaMensualDTO import ArtistaMensualDTO
-# Asegúrate de importar la interfaz correcta si la usas, o heredar de object
-# from backend.model.dao.interfaceArtistasMensualesDao import InterfaceArtistasMensualesDao
+from backend.model.dao.interfaceArtistasMensualesDao import InterfaceArtistasMensualesDao
 
-class PostgresArtistasMensualesDAO:
+class PostgresArtistasMensualesDAO(InterfaceArtistasMensualesDao):
     
     def __init__(self, db):
         self.db = db

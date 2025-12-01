@@ -1,100 +1,126 @@
-from fastapi import FastAPI, HTTPException, Request, APIRouter
-from fastapi.responses import JSONResponse
-from apscheduler.schedulers.background import BackgroundScheduler
-from backend.controller.config import setup_cors  # Configuración de CORS
-from backend.model.model import Model  # Importar el modelo
-from backend.model.dao.postgresql.posgresConnector import PostgreSQLConnector  # Conexión a la DB
-from contextlib import asynccontextmanager
-from backend.controller.endpoints import router as estadisticas_router
-from backend.controller.endpoints import model  # Importar el modelo desde endpoints
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+from apscheduler.schedulers.background import BackgroundScheduler
 
-# Inicializar la aplicación FastAPI
-app = FastAPI()
+# Importaciones de tu backend
+from backend.controller.endpoints import router as estadisticas_router
+from backend.controller.endpoints import model  # Importar el modelo
 
-app.add_middleware(
-    CORSMiddleware,
-    # Pon "*" para permitir TODOS los orígenes (lo más fácil para desarrollo)
-    # O pon ["http://localhost:3001"] para ser específico
-    allow_origins=["*"], 
-    allow_credentials=True,
-    allow_methods=["*"], # Permitir GET, POST, PUT, DELETE, etc.
-    allow_headers=["*"], # Permitir todas las cabeceras
-)
-
-# Inicializar el Scheduler (para tareas programadas)
+# --- 1. DEFINICIÓN DEL SCHEDULER Y FUNCIONES ---
 scheduler = BackgroundScheduler()
 
-# Función para actualizar mensualmente los oyentes de los artistas
 def actualizar_mensualmente():
-    print("🔄 Actualizando oyentes mensuales...")
+    print("🔄 Actualizando oyentes mensuales...", flush=True)
     try:
         model.sync_todos_los_artistas()
-        print("✅ Actualización mensual completada")
+        print("✅ Actualización mensual completada", flush=True)
     except Exception as e:
-        print("❌ Error durante la actualización mensual:", str(e))
-
-# Función para resetear las búsquedas mensuales
-def resetear_busquedas_mensuales():
-    print("🗑️ Reseteando búsquedas mensuales...")
-    try:
-        model.registrar_o_actualizar_busqueda_artista()  # Llamar al modelo para resetear las búsquedas
-        print("✅ Búsquedas reseteadas")
-    except Exception as e: 
-        print("❌ Error al resetear búsquedas:", str(e))
+        print(f"❌ Error actualización mensual: {str(e)}", flush=True)
 
 def actualizar_contenido_mensualmente():
-    print("🔄 Iniciando actualización mensual de CONTENIDOS...")
+    print("🔄 Actualizando CONTENIDOS...", flush=True)
     try:
-        # Llamamos al nuevo método masivo del modelo
         model.sync_todos_los_contenidos()
-        print("✅ Actualización mensual de contenidos completada")
+        print("✅ Contenidos actualizados", flush=True)
     except Exception as e:
-        print("❌ Error durante la actualización mensual de contenidos:", str(e))
+        print(f"❌ Error contenidos: {str(e)}", flush=True)
+        
+def actualizar_comunidades_mensualmente():
+    print("🔄 Actualizando COMUNIDADES...", flush=True)
+    try:
+        model.sync_todas_las_comunidades()
+        print("✅ Comunidades actualizadas", flush=True)
+    except Exception as e:
+        print(f"❌ Error comunidades: {str(e)}", flush=True)
+        
 
-# Configuración de lifespan (cuando el servidor se inicia y apaga)
+        
+
+# --- 2. CONFIGURACIÓN DEL LIFESPAN (Ciclo de Vida) ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # === STARTUP ===
+    # === AL INICIAR (STARTUP) ===
+    print("🚀 Iniciando aplicación y planificador...", flush=True)
+    
     if not scheduler.running:
-        # Añadimos los jobs de forma compacta
+        # Jobs mensuales
         scheduler.add_job(actualizar_mensualmente, trigger="cron", day=1, hour=0, minute=0)
-        print("🗓️ Scheduler mensual añadido")
+        scheduler.add_job(actualizar_contenido_mensualmente, trigger="cron", day=1, hour=0, minute=2)
+        scheduler.add_job(actualizar_comunidades_mensualmente, trigger="cron", day=1, hour=0, minute=3)
         
-        scheduler.add_job(resetear_busquedas_mensuales, trigger="cron", day=1, hour=0, minute=1)
-        print("🗓️ Scheduler mensual añadido (reset búsquedas)")
-
-        scheduler.add_job(actualizar_contenido_mensualmente, trigger="cron", day=1, hour=0, minute=5)
-        print("🗓️ Scheduler mensual añadido (Contenidos)")
+        # Job de PRUEBA (Cada 30 segundos) - Para ver si funciona ahora
+        # scheduler.add_job(
+        #     actualizar_comunidades_mensualmente, 
+        #     trigger="interval", 
+        #     seconds=5,
+        #     id="job_prueba_comunidades", # ID para evitar duplicados
+        #     replace_existing=True
+        # )
+        
         # scheduler.add_job(
         #     actualizar_mensualmente, 
         #     trigger="interval", 
-        #     seconds=30,
-        #     id="test_sync_contenidos", # ID opcional pero útil
+        #     seconds=10,
+        #     id="job_prueba_artistas", # ID para evitar duplicados
         #     replace_existing=True
         # )
-        # Iniciar el scheduler
+        
+        # scheduler.add_job(
+        #     resetear_busquedas_mensuales, 
+        #     trigger="interval", 
+        #     seconds=15,
+        #     id="job_prueba_busquedas", # ID para evitar duplicados
+        #     replace_existing=True
+        # )
+        
+        # scheduler.add_job(
+        #     actualizar_contenido_mensualmente, 
+        #     trigger="interval", 
+        #     seconds=20,
+        #     id="job_prueba_contenidos", # ID para evitar duplicados
+        #     replace_existing=True
+        # )
+        
+        # scheduler.add_job(
+        #     actualizar_reproducciones_mensuales, 
+        #     trigger="interval", 
+        #     seconds=25,
+        #     id="job_prueba_reproducciones", # ID para evitar duplicados
+        #     replace_existing=True
+        # )
+
         scheduler.start()
-        print("🗓️ Scheduler iniciado")
+        print("🗓️ Scheduler iniciado correctamente", flush=True)
+        scheduler.print_jobs() # Imprime en consola qué trabajos hay programados
 
-    app.state.model = model  # Guardamos el modelo en el estado de la app
-
-    yield  # Aquí corre la aplicación
-
-    # === SHUTDOWN ===
+    app.state.model = model
+    
+    yield # <--- Aquí la app se queda corriendo
+    
+    # === AL APAGAR (SHUTDOWN) ===
     if scheduler.running:
         scheduler.shutdown()
-        print("🛑 Scheduler detenido")
+        print("🛑 Scheduler detenido", flush=True)
 
-# Creamos la app con lifespan
+# --- 3. INICIALIZAR LA APP (UNA SOLA VEZ) ---
 app = FastAPI(
     title="Microservicio de Estadísticas",
-    lifespan=lifespan
+    lifespan=lifespan # Aquí vinculamos el ciclo de vida
 )
 
-# CORS: Para permitir acceso desde ciertos orígenes (si lo necesitas)
-setup_cors(app)
+# --- 4. CONFIGURAR MIDDLEWARE (CORS) ---
+# Nota: He quitado 'setup_cors(app)' porque chocaba con esto. 
+# Es mejor configurar CORS explícitamente aquí.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], 
+    allow_credentials=True,
+    allow_methods=["*"], 
+    allow_headers=["*"], 
+)
 
+# --- 5. INCLUIR RUTAS ---
 app.include_router(estadisticas_router)
 
 @app.get("/")

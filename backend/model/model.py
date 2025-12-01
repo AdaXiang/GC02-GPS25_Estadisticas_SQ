@@ -8,6 +8,7 @@ from backend.model.dto.contenidoDTO import ContenidoDTO
 from backend.model.dto.artistaMensualDTO import ArtistaMensualDTO
 from backend.model.dto.busquedaArtistaDTO import BusquedaArtistaDTO
 from backend.model.dto.comunidadMensualDTO import ComunidadDTO
+from backend.model.dto.reproduccionDTO import ReproduccionDTO
 
 class Model:
     def __init__(self):
@@ -19,6 +20,7 @@ class Model:
         self.busquedasArtistasDAO = self.factory.get_busquedas_artistas_dao()
         self.contenidoDAO = self.factory.get_contenido_dao()      
         self.comunidadDAO = self.factory.get_comunidad_dao()
+        self.reproduccionesDAO = self.factory.get_reproducciones_dao()
         
         # URLs
         self.URL_CONTENIDOS = f"{CONTENIDO_API_BASE_URL}/elementos" 
@@ -198,6 +200,21 @@ class Model:
             self.db.rollback()
             raise e
         
+    def resetear_busquedas_mensuales(self):
+        print("🗑️ Reseteando búsquedas mensuales...")
+        try:
+            # ❌ MAL: Antes tenías esto, que pide un ID que no tienes
+            # self.registrar_o_actualizar_busqueda_artista() 
+
+            # ✅ BIEN: Llama al nuevo método del DAO que no pide argumentos
+            self.busquedasArtistasDAO.eliminar_todas_las_busquedas()
+            
+            print("✅ Búsquedas mensuales reseteadas correctamente.")
+        except Exception as e:
+            print(f"❌ Error reseteo búsquedas: {e}")
+            # No hagas raise aquí si es una tarea en segundo plano (cron), 
+            # o parará todo el servidor. Solo loguealo.
+        
     # ================== CONTENIDO ==================    
 
     def get_todos_los_contenidos(self):
@@ -346,7 +363,87 @@ class Model:
             raise e
         
     # ================== COMUNIDAD ==================
+    def sync_todas_las_comunidades(self):
+        """
+        Orquestador principal: Obtiene la lista y procesa cada comunidad.
+        """
+        self.db.rollback() # Limpieza inicial
+        
+        # 1. Obtener datos crudos de la API
+        comunidades_data = self.obtener_comunidades_desde_api()
 
+        if not comunidades_data:
+            print("⚠️ No se pudo obtener la lista de comunidades")
+            return
+
+        print(f"🔄 Sincronizando {len(comunidades_data)} comunidades...")
+        resultados = []
+
+        # 2. Iterar y procesar
+        for datos_comunidad in comunidades_data:
+            # Protegemos la lectura del ID por si viene como 'id' o 'idComunidad'
+            id_comunidad = datos_comunidad.get("idComunidad") or datos_comunidad.get("id")
+            
+            try:
+                # Llamamos al método que procesa una sola comunidad
+                # Pasamos 'datos_comunidad' directamente para evitar otra petición API
+                resultado = self.sync_comunidad_metricas(id_comunidad, datos_comunidad)
+                resultados.append(resultado)
+                
+            except Exception as e:
+                print(f"❌ Error sincronizando comunidad {id_comunidad}:", e)
+                self.db.rollback() # Rollback solo de esta iteración fallida
+
+        print("✅ Sincronización de comunidades completa")
+        return resultados
+
+    def sync_comunidad_metricas(self, id_comunidad, datos=None):
+        """
+        Procesa una única comunidad: Crea el DTO y lo guarda en BD.
+        Si 'datos' es None, podría intentar buscarla individualmente (opcional).
+        """
+        self.db.rollback()
+        try:
+            # Si no pasamos datos (flujo individual), habría que pedirlos.
+            # Aquí asumimos que el flujo batch ya nos da los datos.
+            if not datos:
+                 # Lógica opcional si quisieras buscar por ID individualmente
+                 raise Exception("Datos no proporcionados para sincronización individual")
+
+            # 1. Crear DTO con los datos recibidos
+            # Mapeamos los campos del JSON externo a tu DTO
+            dto = ComunidadDTO(
+                idcomunidad=id_comunidad,
+                numpublicaciones=int(datos.get("numPublicaciones", 0)),
+                # Ojo: Tu API parece devolver 'numUsuarios', pero tu DTO usa 'numMiembros'
+                nummiembros=int(datos.get("numUsuarios", 0)) 
+            )
+
+            # 2. Llamar al DAO (Upsert)
+            self.comunidadDAO.actualizar_o_insertar_comunidad(dto)
+            self.db.commit()
+
+            return dto.to_dict()
+            
+        except Exception as e:
+            print(f"❌ Error en sync_comunidad_metricas para ID {id_comunidad}: {e}")
+            self.db.rollback()
+            raise e
+
+    def obtener_comunidades_desde_api(self):
+        """
+        Consulta el microservicio externo para obtener todas las comunidades.
+        """
+        # Usamos la URL base que tenías definida en tu otro método
+        url = f"{self.URL_COMUNIDAD}/" 
+        try:
+            resp = requests.get(url, timeout=20)
+            resp.raise_for_status()
+            return resp.json() 
+        except Exception as e:
+            print("❌ Error obteniendo comunidades desde API Externa:", e)
+            return []
+        
     def sincronizar_comunidad_desde_api(self, id_comunidad):
         try: self.db.rollback() 
         except: pass
@@ -442,3 +539,61 @@ class Model:
             return dto.to_dict() if dto else None
         except Exception as e:
             raise e
+        
+    # ================== REPRODUCCIONES ==================
+    def registrar_reproduccion(self, id_usuario: int, id_contenido: int, segundos: int):
+        # El DAO ya gestiona el commit/rollback, así que aquí solo llamamos
+        print(f"🎵 Registrando reproducción: Usuario {id_usuario}, Contenido {id_contenido}")
+        try:
+            self.reproduccionesDAO.insertar_reproduccion(id_usuario, id_contenido, segundos)
+        except Exception as e:
+            raise e
+
+    def obtener_historial_personal(self, id_usuario: int) -> list[dict]:
+        """ Devuelve la lista de diccionarios lista para enviar al frontend """
+        try:
+            dtos = self.reproduccionesDAO.obtener_historial_por_usuario(id_usuario)
+            return [dto.to_dict() for dto in dtos]
+        except Exception as e:
+            print(f"❌ Error obteniendo historial en modelo: {e}")
+            return []
+
+    def resetear_reproducciones_mensuales(self):
+        """
+        Se ejecuta mensualmente (después de procesar las estadísticas).
+        Borra todo el historial de escucha para empezar el mes limpio.
+        """
+        self.db.rollback()
+        print("🗑️ Iniciando reseteo mensual de historial de reproducciones...")
+        
+        try:
+            # Llamamos al DAO
+            self.reproduccionesDAO.eliminar_todo_el_historial()
+            
+            self.db.commit()
+            print("✅ Historial de reproducciones eliminado. Tabla vacía.")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error CRITICO reseteando reproducciones: {e}")
+            self.db.rollback()
+            return False
+    
+    def obtener_top_canciones_usuario(self, id_usuario: int, limit: int = 5):
+        """
+        Devuelve las canciones más escuchadas reutilizando ReproduccionDTO.
+        NOTA: En el JSON devuelto, 'segundosReproducidos' indicará el NÚMERO DE VECES escuchado.
+        """
+        self.db.rollback()
+        try:
+            # 1. Obtenemos la lista de DTOs reutilizados
+            top_dtos = self.reproduccionesDAO.get_top_reproducciones_usuario(id_usuario, limit)
+            
+            # 2. Convertimos a diccionario usando el método existente del DTO
+            return [dto.to_dict() for dto in top_dtos]
+            
+        except Exception as e:
+            print(f"❌ Error en modelo top canciones usuario: {e}")
+            self.db.rollback()
+            raise e    
+    

@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 from backend.model.dto.busquedaArtistaDTO import BusquedaArtistaDTO
 
-
 class InterfaceBusquedasArtistasDao(ABC):
     """
     Interfaz para la gestión de búsquedas de artistas.
@@ -26,4 +25,9 @@ class InterfaceBusquedasArtistasDao(ABC):
     @abstractmethod
     def eliminar_busquedas_por_usuario(self, id_usuario: int) -> bool:
         """Elimina todas las búsquedas asociadas a un usuario dado su ID."""
+        pass
+    
+    @abstractmethod
+    def eliminar_todas_las_busquedas(self):
+        """Elimina todas las búsquedas de artistas."""
         pass

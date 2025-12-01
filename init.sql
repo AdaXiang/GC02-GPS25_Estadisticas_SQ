@@ -1,11 +1,6 @@
 --
--- PostgreSQL database dump
+-- PostgreSQL database dump clean + Nueva tabla historialreproducciones
 --
-
-\restrict fLbr23K4IglVRztuqFdoQV2eN3Ft4trWUD0H5syumTsjZKDEWof1hKpjtiUgeGa
-
--- Dumped from database version 16.10
--- Dumped by pg_dump version 16.10
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -19,13 +14,11 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 SET default_tablespace = '';
-
 SET default_table_access_method = heap;
 
---
--- Name: artistasmensual; Type: TABLE; Schema: public; Owner: postgres
---
-
+-- ============================================================
+-- 1. Tabla: artistasmensual
+-- ============================================================
 CREATE TABLE public.artistasmensual (
     idartista integer NOT NULL,
     numoyentes bigint DEFAULT 0 NOT NULL,
@@ -34,13 +27,11 @@ CREATE TABLE public.artistasmensual (
     CONSTRAINT artistasmensual_numseguidores_check CHECK ((valoracionmedia >= 0))
 );
 
-
 ALTER TABLE public.artistasmensual OWNER TO postgres;
 
---
--- Name: busquedasartistas; Type: TABLE; Schema: public; Owner: postgres
---
-
+-- ============================================================
+-- 2. Tabla: busquedasartistas (con su secuencia)
+-- ============================================================
 CREATE TABLE public.busquedasartistas (
     id integer NOT NULL,
     idartista integer NOT NULL,
@@ -48,12 +39,7 @@ CREATE TABLE public.busquedasartistas (
     fecha timestamp without time zone DEFAULT now()
 );
 
-
 ALTER TABLE public.busquedasartistas OWNER TO postgres;
-
---
--- Name: busquedasartistas_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
 
 CREATE SEQUENCE public.busquedasartistas_id_seq
     AS integer
@@ -63,20 +49,14 @@ CREATE SEQUENCE public.busquedasartistas_id_seq
     NO MAXVALUE
     CACHE 1;
 
-
 ALTER SEQUENCE public.busquedasartistas_id_seq OWNER TO postgres;
-
---
--- Name: busquedasartistas_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
 ALTER SEQUENCE public.busquedasartistas_id_seq OWNED BY public.busquedasartistas.id;
 
+ALTER TABLE ONLY public.busquedasartistas ALTER COLUMN id SET DEFAULT nextval('public.busquedasartistas_id_seq'::regclass);
 
---
--- Name: comunidadesmensual; Type: TABLE; Schema: public; Owner: postgres
---
-
+-- ============================================================
+-- 3. Tabla: comunidadesmensual
+-- ============================================================
 CREATE TABLE public.comunidadesmensual (
     idcomunidad integer NOT NULL,
     numpublicaciones bigint DEFAULT 0 NOT NULL,
@@ -85,13 +65,11 @@ CREATE TABLE public.comunidadesmensual (
     CONSTRAINT comunidadesmensual_numpublicaciones_check CHECK ((numpublicaciones >= 0))
 );
 
-
 ALTER TABLE public.comunidadesmensual OWNER TO postgres;
 
---
--- Name: contenidosmensual; Type: TABLE; Schema: public; Owner: postgres
---
-
+-- ============================================================
+-- 4. Tabla: contenidosmensual
+-- ============================================================
 CREATE TABLE public.contenidosmensual (
     idcontenido integer NOT NULL,
     esalbum boolean NOT NULL,
@@ -105,72 +83,35 @@ CREATE TABLE public.contenidosmensual (
     CONSTRAINT contenidosmensual_sumavaloraciones_check CHECK ((sumavaloraciones >= (0)::numeric))
 );
 
-
 ALTER TABLE public.contenidosmensual OWNER TO postgres;
 
---
--- Name: generosmensual; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.generosmensual (
-    idgenero integer NOT NULL,
-    numreproducciones bigint NOT NULL,
-    CONSTRAINT generosmensual_numreproducciones_check CHECK ((numreproducciones >= 0))
+-- ============================================================
+-- 6. NUEVA TABLA: historialreproducciones
+-- ============================================================
+CREATE TABLE public.historialreproducciones (
+    id SERIAL PRIMARY KEY,
+    id_usuario INT NOT NULL,
+    id_contenido INT NOT NULL,
+    fecha_reproduccion TIMESTAMP DEFAULT NOW(),
+    segundos_reproducidos INT DEFAULT 0
 );
 
+ALTER TABLE public.historialreproducciones OWNER TO postgres;
 
-ALTER TABLE public.generosmensual OWNER TO postgres;
-
---
--- Name: busquedasartistas id; Type: DEFAULT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.busquedasartistas ALTER COLUMN id SET DEFAULT nextval('public.busquedasartistas_id_seq'::regclass);
-
-
---
--- Name: artistasmensual artistasmensual_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
+-- ============================================================
+-- Primary Keys (Resto de tablas)
+-- ============================================================
 
 ALTER TABLE ONLY public.artistasmensual
     ADD CONSTRAINT artistasmensual_pkey PRIMARY KEY (idartista);
 
-
---
--- Name: busquedasartistas busquedasartistas_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.busquedasartistas
     ADD CONSTRAINT busquedasartistas_pkey PRIMARY KEY (id);
-
-
---
--- Name: comunidadesmensual comunidadesmensual_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
 
 ALTER TABLE ONLY public.comunidadesmensual
     ADD CONSTRAINT comunidadesmensual_pkey PRIMARY KEY (idcomunidad);
 
-
---
--- Name: contenidosmensual contenidosmensual_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.contenidosmensual
     ADD CONSTRAINT contenidosmensual_pkey PRIMARY KEY (idcontenido);
 
-
---
--- Name: generosmensual generosmensual_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.generosmensual
-    ADD CONSTRAINT generosmensual_pkey PRIMARY KEY (idgenero);
-
-
---
--- PostgreSQL database dump complete
---
-
-\unrestrict fLbr23K4IglVRztuqFdoQV2eN3Ft4trWUD0H5syumTsjZKDEWof1hKpjtiUgeGa
 

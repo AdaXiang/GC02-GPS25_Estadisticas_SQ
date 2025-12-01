@@ -7,7 +7,16 @@ class InterfaceArtistasMensualesDao(ABC):
     """
     Interfaz para la gestión de estadísticas mensuales de artistas.
     """
+    @abstractmethod
+    def actualizar_o_insertar(self, dto: ArtistaMensualDTO) -> bool:
+        """Actualiza o inserta un artista mensual."""
+        pass
 
+    @abstractmethod
+    def obtener_todos(self) -> List[ArtistaMensualDTO]:
+        """Devuelve todos los artistas mensuales."""
+        pass
+    
     @abstractmethod
     def obtener_por_id(self, id_artista: int) -> Optional[ArtistaMensualDTO]:
         """Devuelve un artista mensual por ID."""
@@ -18,7 +27,3 @@ class InterfaceArtistasMensualesDao(ABC):
         """Devuelve el ranking de artistas por número de oyentes."""
         pass
 
-    @abstractmethod
-    def upsert(self, dto: ArtistaMensualDTO) -> ArtistaMensualDTO:
-        """Inserta o actualiza un artista mensual."""
-        pass
