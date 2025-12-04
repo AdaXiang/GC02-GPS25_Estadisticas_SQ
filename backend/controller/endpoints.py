@@ -3,6 +3,7 @@ from backend.model.model import Model
 
 router = APIRouter(prefix="/estadisticas", tags=["Estadísticas"])
 model = Model()
+limiteSuperado = "'limit' no puede ser mayor que 100."
 
 # ========================= ARTISTAS =========================
 
@@ -350,7 +351,7 @@ async def get_top_artistas(request: Request, limit: int = 10):
         if limit > 100:
             raise HTTPException(
                 status_code=400,
-                detail="'limit' no puede ser mayor que 100."
+                detail=limiteSuperado
             )
 
         top = model.get_top_artistas_busquedas(limit=limit)
@@ -515,7 +516,7 @@ async def get_top_valoracion(request: Request, limit: int = 10):
         if limit > 100:
             raise HTTPException(
                 status_code=400, 
-                detail="'limit' no puede ser mayor que 100."
+                detail=limiteSuperado
             )
 
         # Llamada al modelo
@@ -552,7 +553,7 @@ async def get_top_comentarios(request: Request, limit: int = 10):
         if limit <= 0:
             raise HTTPException(status_code=400, detail="'limit' debe ser positivo.")
         if limit > 100:
-            raise HTTPException(status_code=400, detail="'limit' no puede ser mayor que 100.")
+            raise HTTPException(status_code=400, detail=limiteSuperado)
 
         top = model.get_top_contenidos_comentarios(limit=limit)
 
@@ -586,7 +587,7 @@ async def get_top_ventas(request: Request, limit: int = 10):
         if limit <= 0:
             raise HTTPException(status_code=400, detail="'limit' debe ser positivo.")
         if limit > 100:
-            raise HTTPException(status_code=400, detail="'limit' no puede ser mayor que 100.")
+            raise HTTPException(status_code=400, detail=limiteSuperado)
 
         top = model.get_top_contenidos_ventas(limit=limit)
 
