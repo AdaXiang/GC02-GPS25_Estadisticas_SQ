@@ -244,7 +244,8 @@ class Model:
                     lista = resp_com.json()
                     reales = [c for c in lista if c.get("comentario") and str(c.get("comentario")).strip() != ""]
                     num_comentarios = len(reales)
-            except:
+            except (requests.RequestException, ValueError):
+                print(f"⚠️ No se pudieron obtener comentarios para contenido {id_contenido}")
                 num_comentarios = 0
 
             # 2. Extracción segura
