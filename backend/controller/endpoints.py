@@ -4,6 +4,7 @@ from backend.model.model import Model
 router = APIRouter(prefix="/estadisticas", tags=["Estadísticas"])
 model = Model()
 limiteSuperado = "'limit' no puede ser mayor que 100."
+errorServidor = "Error interno del servidor."
 
 # ========================= ARTISTAS =========================
 
@@ -454,7 +455,7 @@ async def sincronizar_contenido(request: Request):
     
     except Exception as e:
         print(f"❌ Error interno: {e}")
-        raise HTTPException(status_code=500, detail="Error interno del servidor.")
+        raise HTTPException(status_code=500, detail=errorServidor)
     
 @router.get("/contenido/{id_contenido}")
 async def get_estadisticas_contenido(id_contenido: int, request: Request):
@@ -664,7 +665,7 @@ async def sincronizar_comunidad(request: Request):
         print(f"❌ Error interno comunidad: {e}")
         if isinstance(e, HTTPException):
             raise e
-        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"{errorServidor}: {str(e)}")
     
 @router.get("/comunidad")
 async def obtener_todas_las_comunidades():
@@ -791,7 +792,7 @@ async def registrar_reproduccion(request: Request):
         raise
     except Exception as e:
         print(f"❌ Error interno en registrar_reproduccion: {e}")
-        raise HTTPException(status_code=500, detail="Error interno del servidor")
+        raise HTTPException(status_code=500, detail=errorServidor)
     
 @router.get("/reproducciones/usuario/{id_usuario}")
 async def obtener_historial_reproducciones(id_usuario: int, request: Request):
@@ -817,7 +818,7 @@ async def obtener_historial_reproducciones(id_usuario: int, request: Request):
         raise he
     except Exception as e:
         print(f"❌ Error obteniendo historial de reproducciones: {e}")
-        raise HTTPException(status_code=500, detail="Error interno del servidor")
+        raise HTTPException(status_code=500, detail=errorServidor)
     
 @router.get("/reproducciones/top/usuario/{id_usuario}")
 async def get_top_reproducciones_por_usuario(id_usuario: int, limit: int = 5):
@@ -831,4 +832,4 @@ async def get_top_reproducciones_por_usuario(id_usuario: int, limit: int = 5):
         raise
     except Exception as e:
         print(f"Error endpoint top usuario: {e}")
-        raise HTTPException(status_code=500, detail="Error interno del servidor")
+        raise HTTPException(status_code=500, detail=errorServidor)
