@@ -447,7 +447,7 @@ class Model:
         
     def sincronizar_comunidad_desde_api(self, id_comunidad):
         try: self.db.rollback() 
-        except: pass
+        except Exception: pass
         print(f"🔄 Sincronizando comunidad ID: {id_comunidad}...")
         try:
             url = f"{self.URL_COMUNIDAD}/"
@@ -487,13 +487,13 @@ class Model:
         except Exception as e:
             print(f"❌ Error comunidad: {e}")
             try: self.db.rollback()
-            except: pass
+            except Exception: pass
             raise e
         
     def obtener_todas_las_comunidades(self):
         try:
             try: self.db.rollback()
-            except: pass
+            except Exception: pass
             
             # DAO devuelve DTOs
             lista = self.comunidadDAO.obtener_todas()
@@ -514,7 +514,7 @@ class Model:
     def obtener_ranking_comunidades_miembros(self):
         try:
             try: self.db.rollback() 
-            except: pass
+            except Exception: pass
             
             lista = self.comunidadDAO.obtener_ranking_miembros(limite=10)
             return [dto.to_dict() for dto in lista]
@@ -524,7 +524,7 @@ class Model:
     def obtener_ranking_comunidades_publicaciones(self):
         try:
             try: self.db.rollback() 
-            except: pass
+            except Exception: pass
             
             lista = self.comunidadDAO.obtener_ranking_publicaciones(limite=10)
             return [dto.to_dict() for dto in lista]
@@ -534,7 +534,7 @@ class Model:
     def obtener_comunidad_por_id(self, id_comunidad):
         try:
             try: self.db.rollback() 
-            except: pass
+            except Exception: pass
             
             dto = self.comunidadDAO.obtener_por_id(id_comunidad)
             return dto.to_dict() if dto else None
